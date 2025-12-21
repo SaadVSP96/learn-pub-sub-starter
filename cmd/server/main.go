@@ -20,21 +20,21 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	gamelogic.PrintServerHelp()
-
 	publishCh, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("could not create channel: %v", err)
 	}
 
+	gamelogic.PrintServerHelp()
+
 	for {
-		userInpStrings := gamelogic.GetInput()
-		if len(userInpStrings) == 0 {
+		words := gamelogic.GetInput()
+		if len(words) == 0 {
 			continue
 		}
-		switch userInpStrings[0] {
+		switch words[0] {
 		case "pause":
-			log.Println("sending pause message")
+			fmt.Println("Publishing paused game state")
 			err = pubsub.PublishJSON(
 				publishCh,
 				routing.ExchangePerilDirect,
@@ -47,7 +47,7 @@ func main() {
 				log.Printf("could not publish time: %v", err)
 			}
 		case "resume":
-			log.Println("sending resume message")
+			fmt.Println("Publishing resumes game state")
 			err = pubsub.PublishJSON(
 				publishCh,
 				routing.ExchangePerilDirect,
@@ -60,10 +60,10 @@ func main() {
 				log.Printf("could not publish time: %v", err)
 			}
 		case "quit":
-			log.Println("exiting")
+			log.Println("goodbye")
 			return
 		default:
-			log.Printf("unidentifiable command: %s\n", userInpStrings[0])
+			fmt.Println("unknown command")
 		}
 	}
 }
