@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
@@ -12,30 +10,30 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting Peril server...")
+	const rabbitConnString = "amqp://guest:guest@localhost:5672/"
 
-	connString := "amqp://guest:guest@localhost:5672/"
-	connection, err := amqp.Dial(connString)
+	conn, err := amqp.Dial(rabbitConnString)
 	if err != nil {
-		log.Fatalf("connection to rabbitmq server failed: %v", err)
+		log.Fatalf("could not connect to RabbitMQ: %v", err)
 	}
-	defer connection.Close()
+	defer conn.Close()
+	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	channel, err := connection.Channel()
+	publishCh, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("generating channel from the connection failed: %v", err)
+		log.Fatalf("could not create channel: %v", err)
 	}
-	err = pubsub.PublishJSON(channel,
+
+	err = pubsub.PublishJSON(
+		publishCh,
 		routing.ExchangePerilDirect,
 		routing.PauseKey,
-		routing.PlayingState{IsPaused: true})
-
-	fmt.Println("RabbitMQ connection successful...")
-
-	// Listen for Ctrl+C
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	<-signalChan
-	fmt.Println("Shutting down Peril server...")
+		routing.PlayingState{
+			IsPaused: true,
+		},
+	)
+	if err != nil {
+		log.Printf("could not publish time: %v", err)
+	}
+	fmt.Println("Pause message sent!")
 }
