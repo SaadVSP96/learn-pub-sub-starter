@@ -38,7 +38,7 @@ func main() {
 		routing.ArmyMovesPrefix+"."+gs.GetUsername(),
 		routing.ArmyMovesPrefix+".*",
 		pubsub.SimpleQueueTransient,
-		handlerMove(gs),
+		handlerMove(gs, publishCh),
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to army moves: %v", err)
@@ -53,6 +53,18 @@ func main() {
 	)
 	if err != nil {
 		log.Fatalf("could not subscribe to pause: %v", err)
+	}
+
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,         // exchange
+		routing.WarRecognitionsPrefix,      // queue name: "war"
+		routing.WarRecognitionsPrefix+".*", // bind all usernames
+		pubsub.SimpleQueueDurable,          // durable
+		handlerWar(gs),                     // war handler
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to war declarations: %v", err)
 	}
 
 	for {
