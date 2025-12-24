@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -45,12 +44,6 @@ func handlerMove(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogi
 func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(dw gamelogic.RecognitionOfWar) pubsub.Acktype {
 	return func(dw gamelogic.RecognitionOfWar) pubsub.Acktype {
 		defer fmt.Print("> ")
-		var messageString string
-		var gameLog routing.GameLog = routing.GameLog{
-			Username:    gs.GetUsername(),
-			Message:     messageString,
-			CurrentTime: time.Now(),
-		}
 		warOutcome, winner, loser := gs.HandleWar(dw)
 		switch warOutcome {
 		case gamelogic.WarOutcomeNotInvolved:
@@ -58,13 +51,10 @@ func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(dw gamelo
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
-			messageString = fmt.Sprintf("{%v} won a war against {%v}", winner, loser)
-			gameLog.Message = messageString
-			err := pubsub.PublishGameLog(
+			err := publishGameLog(
 				publishCh,
-				routing.ExchangePerilTopic,
-				routing.GameLogSlug+"."+gs.GetUsername(),
-				gameLog,
+				gs.GetUsername(),
+				fmt.Sprintf("%s won a war against %s", winner, loser),
 			)
 			if err != nil {
 				fmt.Printf("error: %s\n", err)
@@ -72,13 +62,10 @@ func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(dw gamelo
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeYouWon:
-			messageString = fmt.Sprintf("{%v} won a war against {%v}", winner, loser)
-			gameLog.Message = messageString
-			err := pubsub.PublishGameLog(
+			err := publishGameLog(
 				publishCh,
-				routing.ExchangePerilTopic,
-				routing.GameLogSlug+"."+gs.GetUsername(),
-				gameLog,
+				gs.GetUsername(),
+				fmt.Sprintf("%s won a war against %s", winner, loser),
 			)
 			if err != nil {
 				fmt.Printf("error: %s\n", err)
@@ -86,13 +73,10 @@ func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(dw gamelo
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
-			messageString = fmt.Sprintf("A war between {%v} and {%v} resulted in a draw", winner, loser)
-			gameLog.Message = messageString
-			err := pubsub.PublishGameLog(
+			err := publishGameLog(
 				publishCh,
-				routing.ExchangePerilTopic,
-				routing.GameLogSlug+"."+gs.GetUsername(),
-				gameLog,
+				gs.GetUsername(),
+				fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser),
 			)
 			if err != nil {
 				fmt.Printf("error: %s\n", err)
