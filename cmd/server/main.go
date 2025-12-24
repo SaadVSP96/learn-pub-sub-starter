@@ -37,6 +37,18 @@ func main() {
 	}
 	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
+	err = pubsub.SubscribeGob(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.PauseKey,
+		pubsub.SimpleQueueDurable,
+		handlerGameLog(),
+	)
+	if err != nil {
+		log.Fatalf("could not subscribe to pause: %v", err)
+	}
+
 	gamelogic.PrintServerHelp()
 
 	for {
